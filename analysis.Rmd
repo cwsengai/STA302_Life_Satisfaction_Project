@@ -48,8 +48,6 @@ str(cleaned_data)
 # Data Description
 
 ```{r}
-# Summary statistics
-
 #1. Calculate missing values
 lapply(cleaned_data, table, useNA = "ifany")
 
@@ -63,8 +61,7 @@ cleaned_data$Life_satisfaction[
 # Physical activity time: special missing or invalid codes
 # Convert values outside the documented valid range to NA
 cleaned_data$Total_physical_act_time[
-  cleaned_data$Total_physical_act_time < 0 |
-  cleaned_data$Total_physical_act_time > 2100
+  cleaned_data$Total_physical_act_time %in% c(99996, 99997, 99998, 99999)
 ] <- NA
 
 # Work hours: special codes
@@ -104,7 +101,7 @@ cleaned_data$Total_income[
 
 # Marital status: non-response code
 cleaned_data$Marital_status[
-  cleaned_data$Marital_status %in% c(3, 9)
+  cleaned_data$Marital_status %in% c(3, 6, 9)
 ] <- NA
 
 #missing_value summary
@@ -118,6 +115,27 @@ missing_summary <- data.frame(
 )
 
 missing_summary
+```
+
+```{r}
+#2. summary statistic
+
+#for numerical variables
+numerical_vars <- c(
+  "Life_satisfaction",
+  "Total_physical_act_time",
+  "Work_hours",
+  "Smoked",
+  "Total_active_time"
+)
+
+summary(cleaned_data[numerical_vars])
+
+#for categorical variables
+table(cleaned_data$Gender, useNA = "ifany")
+table(cleaned_data$Marital_status, useNA = "ifany")
+table(cleaned_data$High_BP, useNA = "ifany")
+table(cleaned_data$Total_income, useNA = "ifany")
 ```
 
 # Preliminary Results
