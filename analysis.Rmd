@@ -1,0 +1,127 @@
+---
+title: "Life Satisfaction Analysis"
+author: "By: Charlotte Wong, "
+output: pdf_document
+geometry: margin=0.5in
+urlcolor: blue
+---
+
+# Data Import
+
+```{r}
+# Import the dataset
+data <- read.csv("health_dataset.csv")
+
+# View the first few rows
+head(data)
+
+# Check the variable names
+names(data)
+
+# View the table structure
+str(data)
+```
+
+# Data Cleaning
+
+```{r}
+# Clean your selected variables
+cleaned_data <- subset(as.data.frame(data), 
+              select = c(
+                Life_satisfaction, 
+                Total_physical_act_time, 
+                Work_hours, 
+                Smoked, 
+                High_BP, 
+                Total_active_time, 
+                Stress_level, 
+                Sense_belonging, 
+                Total_income, 
+                Gender, 
+                Marital_status))
+
+head(cleaned_data)
+str(cleaned_data)
+
+```
+
+# Data Description
+
+```{r}
+# Summary statistics
+
+#1. Calculate missing values
+lapply(cleaned_data, table, useNA = "ifany")
+
+# convert invalid or special missing-value codes to NA before generating missing-value summary
+
+# Life satisfaction: special response codes
+cleaned_data$Life_satisfaction[
+  cleaned_data$Life_satisfaction %in% c(97, 98, 99)
+] <- NA
+
+# Physical activity time: special missing or invalid codes
+# Convert values outside the documented valid range to NA
+cleaned_data$Total_physical_act_time[
+  cleaned_data$Total_physical_act_time < 0 |
+  cleaned_data$Total_physical_act_time > 2100
+] <- NA
+
+# Work hours: special codes
+cleaned_data$Work_hours[
+  cleaned_data$Work_hours %in% c(96, 99)
+] <- NA
+
+# Smoking: special codes
+cleaned_data$Smoked[
+  cleaned_data$Smoked %in% c(996, 999)
+] <- NA
+
+# High blood pressure: non-response codes
+cleaned_data$High_BP[
+  cleaned_data$High_BP %in% c(7, 8)
+] <- NA
+
+# Total active time: special missing or invalid codes
+cleaned_data$Total_active_time[
+  cleaned_data$Total_active_time %in% c(99996, 99997, 99998, 99999)
+] <- NA
+
+# Stress level: non-response codes
+cleaned_data$Stress_level[
+  cleaned_data$Stress_level %in% c(7, 8)
+] <- NA
+
+# Sense of belonging: non-response codes
+cleaned_data$Sense_belonging[
+  cleaned_data$Sense_belonging %in% c(7, 8, 9)
+] <- NA
+
+# Income: unavailable or non-response code
+cleaned_data$Total_income[
+  cleaned_data$Total_income %in% c(9)
+] <- NA
+
+# Marital status: non-response code
+cleaned_data$Marital_status[
+  cleaned_data$Marital_status %in% c(3, 9)
+] <- NA
+
+#missing_value summary
+missing_summary <- data.frame(
+  Variable = names(cleaned_data),
+  Missing = sapply(cleaned_data, function(x) sum(is.na(x))),
+  Missing_Percent = sapply(
+    cleaned_data,
+    function(x) round(mean(is.na(x)) * 100, 2)
+  )
+)
+
+missing_summary
+```
+
+# Preliminary Results
+
+```{r}
+# Regression model
+```
