@@ -10,7 +10,10 @@ urlcolor: blue
 
 ```{r}
 # Import the dataset
-data <- read.csv("health_dataset.csv")
+data <- read.csv("data/health_dataset.csv")
+
+# Remove extra spaces from column names
+names(data) <- trimws(names(data))
 
 # View the first few rows
 head(data)
@@ -26,18 +29,17 @@ str(data)
 
 ```{r}
 # Clean your selected variables
-cleaned_data <- subset(as.data.frame(data), 
+cleaned_data <- subset(as.data.frame(data),
               select = c(
-                Life_satisfaction, 
-                Total_physical_act_time, 
-                Work_hours, 
-                Smoked, 
-                High_BP, 
-                Total_active_time, 
-                Stress_level, 
-                Sense_belonging, 
-                Total_income, 
-                Gender, 
+                Life_satisfaction,
+                Age,
+                Gen_health_state,
+                Work_hours,
+                High_BP,
+                Stress_level,
+                Sense_belonging,
+                Total_income,
+                Gender,
                 Marital_status))
 
 head(cleaned_data)
@@ -58,30 +60,14 @@ cleaned_data$Life_satisfaction[
   cleaned_data$Life_satisfaction %in% c(97, 98, 99)
 ] <- NA
 
-# Physical activity time: special missing or invalid codes
-# Convert values outside the documented valid range to NA
-cleaned_data$Total_physical_act_time[
-  cleaned_data$Total_physical_act_time %in% c(99996, 99997, 99998, 99999)
-] <- NA
-
 # Work hours: special codes
 cleaned_data$Work_hours[
   cleaned_data$Work_hours %in% c(96, 99)
 ] <- NA
 
-# Smoking: special codes
-cleaned_data$Smoked[
-  cleaned_data$Smoked %in% c(996, 999)
-] <- NA
-
 # High blood pressure: non-response codes
 cleaned_data$High_BP[
   cleaned_data$High_BP %in% c(7, 8)
-] <- NA
-
-# Total active time: special missing or invalid codes
-cleaned_data$Total_active_time[
-  cleaned_data$Total_active_time %in% c(99996, 99997, 99998, 99999)
 ] <- NA
 
 # Stress level: non-response codes
@@ -114,7 +100,23 @@ missing_summary <- data.frame(
   )
 )
 
+# Age: keep valid age groups
+cleaned_data$Age[
+  !cleaned_data$Age %in% 1:5
+] <- NA
+
+# General health: keep valid health categories
+cleaned_data$Gen_health_state[
+  !cleaned_data$Gen_health_state %in% 1:5
+] <- NA
+
 missing_summary
+# Number of complete observations for the preliminary model
+model_data <- na.omit(cleaned_data)
+
+cat("Original observations:", nrow(data), "\n")
+cat("Complete observations:", nrow(model_data), "\n")
+cat("Number of predictors:", ncol(model_data) - 1, "\n")
 ```
 
 ```{r}
@@ -123,10 +125,7 @@ missing_summary
 #for numerical variables
 numerical_vars <- c(
   "Life_satisfaction",
-  "Total_physical_act_time",
-  "Work_hours",
-  "Smoked",
-  "Total_active_time"
+  "Work_hours"
 )
 
 summary(cleaned_data[numerical_vars])
@@ -136,10 +135,142 @@ table(cleaned_data$Gender, useNA = "ifany")
 table(cleaned_data$Marital_status, useNA = "ifany")
 table(cleaned_data$High_BP, useNA = "ifany")
 table(cleaned_data$Total_income, useNA = "ifany")
+table(cleaned_data$Age, useNA = "ifany")
+table(cleaned_data$Gen_health_state, useNA = "ifany")
+table(cleaned_data$Stress_level, useNA = "ifany")
+table(cleaned_data$Sense_belonging, useNA = "ifany")
 ```
 
 # Preliminary Results
 
 ```{r}
 # Regression model
+# Convert categorical predictors into factors
+model_data$Age <- factor(model_data$Age)
+model_data$Gen_health_state <- factor(model_data$Gen_health_state)
+model_data$High_BP <- factor(model_data$High_BP)
+model_data$Stress_level <- factor(model_data$Stress_level)
+model_data$Sense_belonging <- factor(model_data$Sense_belonging)
+model_data$Total_income <- factor(model_data$Total_income)
+model_data$Gender <- factor(model_data$Gender)
+model_data$Marital_status <- factor(model_data$Marital_status)
+
+# Fit multiple linear regression with interaction
+model <- lm(
+  Life_satisfaction ~ Gender * Work_hours +
+    Age +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+# Display regression results
+summary(model)
+```
+
+```{r gender-workhours-plot, fig.width=8, fig.height=5, fig.align='center', fig.cap='Life satisfaction and weekly work hours by gender among complete-case respondents. Lines represent descriptive linear trends.'}
+library(ggplot2)
+
+# Create a plotting dataset without modifying model_data
+plot_data <- data.frame(
+  Work_hours = model_data$Work_hours,
+  Life_satisfaction = model_data$Life_satisfaction,
+  Gender = factor(
+    model_data$Gender,
+    levels = c("1", "2"),
+    labels = c("Male", "Female")
+  )
+)
+
+ggplot(plot_data,
+       aes(x = Work_hours,
+           y = Life_satisfaction,
+           color = Gender)) +
+  geom_jitter(alpha = 0.025, width = 0.25, height = 0.08) +
+geom_smooth(
+  method = "lm",
+  formula = y ~ x,
+  se = TRUE,
+  linewidth = 1.3
+) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    se = TRUE,
+    linewidth = 1
+  ) +
+  labs(
+    title = "Work Hours and Life Satisfaction by Gender",
+    x = "Weekly work hours",
+    y = "Life satisfaction (0–10)",
+    color = "Gender"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+# Extract regression coefficient estimates
+coef_table <- as.data.frame(summary(model)$coefficients)
+
+# Add variable names as a column
+coef_table$Variable <- rownames(coef_table)
+
+# Calculate 95% confidence intervals
+ci <- confint(model, level = 0.95)
+
+coef_table$CI_Lower <- ci[, 1]
+coef_table$CI_Upper <- ci[, 2]
+
+# Select and reorder columns
+coef_table <- coef_table[, c(
+  "Variable",
+  "Estimate",
+  "Std. Error",
+  "CI_Lower",
+  "CI_Upper",
+  "Pr(>|t|)"
+)]
+
+# Rename columns
+names(coef_table) <- c(
+  "Predictor",
+  "Estimate",
+  "SE",
+  "95% CI Lower",
+  "95% CI Upper",
+  "p-value"
+)
+
+# Round numerical values
+coef_table[, 2:5] <- round(coef_table[, 2:5], 3)
+
+# Display table
+knitr::kable(
+  coef_table,
+  caption = "Table 1. Preliminary multiple linear regression results for life satisfaction."
+)
+```
+
+```{r final-diagnostic-figure, fig.width=10, fig.height=8, fig.align='center', fig.cap='Preliminary OLS diagnostics: residuals versus fitted values, normal Q-Q, scale-location, and residuals versus leverage.'}
+# Arrange four diagnostic plots in a 2 x 2 layout
+par(mfrow = c(2, 2))
+
+# A: Residuals vs Fitted — linearity
+plot(model, which = 1)
+
+# B: Normal Q-Q — normality
+plot(model, which = 2)
+
+# C: Scale-Location — constant variance
+plot(model, which = 3)
+
+# D: Residuals vs Leverage — influential observations
+plot(model, which = 5)
+
+# Restore default plotting layout
+par(mfrow = c(1, 1))
 ```
