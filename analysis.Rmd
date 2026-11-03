@@ -10,11 +10,9 @@ urlcolor: blue
 
 ```{r}
 # Import the dataset
-data <- read.csv("data/health_dataset.csv")
+data <- read.csv("health_dataset.csv")
 
 # Remove extra spaces from column names
-names(data) <- trimws(names(data))
-
 names(data) <- trimws(names(data))
 
 # View the first few rows
@@ -121,24 +119,9 @@ missing_summary <- data.frame(
   )
 )
 
-# Age: keep valid age groups
-cleaned_data$Age[
-  !cleaned_data$Age %in% 1:5
-] <- NA
-
-# General health: keep valid health categories
-cleaned_data$Gen_health_state[
-  !cleaned_data$Gen_health_state %in% 1:5
-] <- NA
-
 missing_summary
-# Number of complete observations for the preliminary model
-model_data <- na.omit(cleaned_data)
-
-cat("Original observations:", nrow(data), "\n")
-cat("Complete observations:", nrow(model_data), "\n")
-cat("Number of predictors:", ncol(model_data) - 1, "\n")
 ```
+
 ```{r}
 # Remove observations with missing values in any variable
 
@@ -155,6 +138,7 @@ removed_n <- original_n - remaining_n
 cat("Original observations:", original_n, "\n")
 cat("Remaining observations:", remaining_n, "\n")
 cat("Removed observations:", removed_n, "\n")
+cat("Number of predictors:", ncol(model_data) - 1, "\n")
 
 cat("Percentage of observations retained:",
     round(remaining_n / original_n * 100, 2), "%\n")
