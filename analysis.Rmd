@@ -243,6 +243,63 @@ geom_smooth(
   theme_minimal(base_size = 12)
 ```
 
+```{r selected-coefficients, echo=FALSE, results='asis'}
+# Select important coefficients
+selected_terms <- c(
+  "Work_hours",
+  "Gender2:Work_hours",
+  "Gen_health_state5",
+  "Stress_level5",
+  "Sense_belonging4",
+  "Total_income5"
+)
+
+# Labels for the table
+predictor_labels <- c(
+  "Work hours (male reference)",
+  "Gender x Work hours (female vs male)",
+  "Poor vs excellent general health",
+  "Extreme vs no stress",
+  "Very weak vs very strong belonging",
+  "Highest vs lowest income"
+)
+
+# Extract coefficient estimates and confidence intervals
+coef_info <- summary(model)$coefficients
+ci_info <- confint(model)
+
+stopifnot(all(selected_terms %in% rownames(coef_info)))
+
+selected_table <- data.frame(
+  Predictor = predictor_labels,
+  Estimate = sprintf("%.4f", coef_info[selected_terms, "Estimate"]),
+  SE = sprintf("%.4f", coef_info[selected_terms, "Std. Error"]),
+  CI = sprintf(
+    "[%.4f, %.4f]",
+    ci_info[selected_terms, 1],
+    ci_info[selected_terms, 2]
+  ),
+  p_value = ifelse(
+    coef_info[selected_terms, "Pr(>|t|)"] < 0.001,
+    "<0.001",
+    sprintf("%.3f", coef_info[selected_terms, "Pr(>|t|)"])
+  ),
+  row.names = NULL
+)
+
+knitr::kable(
+  selected_table,
+  format = "latex",
+  booktabs = TRUE,
+  escape = TRUE,
+  col.names = c("Predictor", "Estimate", "SE", "95% CI", "p-value"),
+  caption = paste0(
+    "Selected OLS coefficient estimates for life satisfaction ",
+    "(n = ", nobs(model), ")."
+  )
+)
+```
+
 ```{r}
 # Extract regression coefficient estimates
 coef_table <- as.data.frame(summary(model)$coefficients)
