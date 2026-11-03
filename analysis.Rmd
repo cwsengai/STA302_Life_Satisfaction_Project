@@ -29,11 +29,11 @@ str(data)
 cleaned_data <- subset(as.data.frame(data), 
               select = c(
                 Life_satisfaction, 
-                Total_physical_act_time, 
+                Age,
+                Gen_health_state, 
                 Work_hours, 
                 Smoked, 
                 High_BP, 
-                Total_active_time, 
                 Stress_level, 
                 Sense_belonging, 
                 Total_income, 
@@ -48,73 +48,102 @@ str(cleaned_data)
 # Data Description
 
 ```{r}
-#1. Calculate missing values
+# 1. Convert special missing-value codes to NA
 lapply(cleaned_data, table, useNA = "ifany")
 
 # convert invalid or special missing-value codes to NA before generating missing-value summary
+# Record the original number of observations
+original_n <- nrow(cleaned_data)
 
-# Life satisfaction: special response codes
+# Life satisfaction: 97 = Don't know, 98 = Refusal, 99 = Not stated
 cleaned_data$Life_satisfaction[
   cleaned_data$Life_satisfaction %in% c(97, 98, 99)
 ] <- NA
 
-# Physical activity time: special missing or invalid codes
-# Convert values outside the documented valid range to NA
-cleaned_data$Total_physical_act_time[
-  cleaned_data$Total_physical_act_time %in% c(99996, 99997, 99998, 99999)
+# Age: Codes 1-5 are valid categories
+# No special missing codes specified in the provided codebook
+
+# General health: 6 = Don't know, 9 = Refusal
+cleaned_data$Gen_health_state[
+  cleaned_data$Gen_health_state %in% c(6, 9)
 ] <- NA
 
-# Work hours: special codes
+# Work hours: 96 = Valid skip, 99 = Not stated
 cleaned_data$Work_hours[
   cleaned_data$Work_hours %in% c(96, 99)
 ] <- NA
 
-# Smoking: special codes
+# Smoking: 996 = Valid skip, 997 = Don't know,
+# 998 = Refusal, 999 = Not stated
 cleaned_data$Smoked[
-  cleaned_data$Smoked %in% c(996, 999)
+  cleaned_data$Smoked %in% c(996, 997, 998, 999)
 ] <- NA
 
-# High blood pressure: non-response codes
+# High blood pressure: 7 = Don't know, 8 = Refusal
 cleaned_data$High_BP[
   cleaned_data$High_BP %in% c(7, 8)
 ] <- NA
 
-# Total active time: special missing or invalid codes
-cleaned_data$Total_active_time[
-  cleaned_data$Total_active_time %in% c(99996, 99997, 99998, 99999)
-] <- NA
-
-# Stress level: non-response codes
+# Stress level: 7 = Don't know, 8 = Refusal
 cleaned_data$Stress_level[
   cleaned_data$Stress_level %in% c(7, 8)
 ] <- NA
 
-# Sense of belonging: non-response codes
+# Sense of belonging: 7 = Don't know,
+# 8 = Refusal, 9 = Not stated
 cleaned_data$Sense_belonging[
   cleaned_data$Sense_belonging %in% c(7, 8, 9)
 ] <- NA
 
-# Income: unavailable or non-response code
+# Total income: 9 = Not stated
 cleaned_data$Total_income[
-  cleaned_data$Total_income %in% c(9)
+  cleaned_data$Total_income == 9
 ] <- NA
 
-# Marital status: non-response code
+# Gender: 9 = Not stated
+cleaned_data$Gender[
+  cleaned_data$Gender == 9
+] <- NA
+
+# Marital status: 3, 6 = Valid skip, 9 = Not stated
 cleaned_data$Marital_status[
   cleaned_data$Marital_status %in% c(3, 6, 9)
 ] <- NA
 
-#missing_value summary
+```
+```{r}
+# Missing value summary
+
 missing_summary <- data.frame(
   Variable = names(cleaned_data),
   Missing = sapply(cleaned_data, function(x) sum(is.na(x))),
-  Missing_Percent = sapply(
-    cleaned_data,
-    function(x) round(mean(is.na(x)) * 100, 2)
+  Missing_Percent = round(
+    sapply(cleaned_data, function(x) mean(is.na(x)) * 100),
+    2
   )
 )
 
 missing_summary
+```
+```{r}
+# Remove observations with missing values in any variable
+
+complete_data <- na.omit(cleaned_data)
+
+# Count observations before and after removing missing values
+
+original_n <- nrow(cleaned_data)
+remaining_n <- nrow(complete_data)
+removed_n <- original_n - remaining_n
+
+# Display the results
+
+cat("Original observations:", original_n, "\n")
+cat("Remaining observations:", remaining_n, "\n")
+cat("Removed observations:", removed_n, "\n")
+
+cat("Percentage of observations retained:",
+    round(remaining_n / original_n * 100, 2), "%\n")
 ```
 
 ```{r}
@@ -123,19 +152,27 @@ missing_summary
 #for numerical variables
 numerical_vars <- c(
   "Life_satisfaction",
-  "Total_physical_act_time",
   "Work_hours",
-  "Smoked",
-  "Total_active_time"
+  "Smoked"
 )
 
 summary(cleaned_data[numerical_vars])
 
 #for categorical variables
-table(cleaned_data$Gender, useNA = "ifany")
-table(cleaned_data$Marital_status, useNA = "ifany")
-table(cleaned_data$High_BP, useNA = "ifany")
-table(cleaned_data$Total_income, useNA = "ifany")
+categorical_vars <- c(
+  "Age",
+  "Gen_health_state",
+  "High_BP",
+  "Stress_level",
+  "Sense_belonging",
+  "Total_income",
+  "Gender",
+  "Marital_status"
+)
+
+lapply(cleaned_data[categorical_vars], function(x) {
+  table(x, useNA = "ifany")
+})
 ```
 
 # Preliminary Results
