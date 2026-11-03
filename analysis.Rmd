@@ -12,6 +12,8 @@ urlcolor: blue
 # Import the dataset
 data <- read.csv("health_dataset.csv")
 
+names(data) <- trimws(names(data))
+
 # View the first few rows
 head(data)
 
@@ -32,7 +34,6 @@ cleaned_data <- subset(as.data.frame(data),
                 Age,
                 Gen_health_state, 
                 Work_hours, 
-                Smoked, 
                 High_BP, 
                 Stress_level, 
                 Sense_belonging, 
@@ -71,12 +72,6 @@ cleaned_data$Gen_health_state[
 # Work hours: 96 = Valid skip, 99 = Not stated
 cleaned_data$Work_hours[
   cleaned_data$Work_hours %in% c(96, 99)
-] <- NA
-
-# Smoking: 996 = Valid skip, 997 = Don't know,
-# 998 = Refusal, 999 = Not stated
-cleaned_data$Smoked[
-  cleaned_data$Smoked %in% c(996, 997, 998, 999)
 ] <- NA
 
 # High blood pressure: 7 = Don't know, 8 = Refusal
