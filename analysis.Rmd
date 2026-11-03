@@ -305,3 +305,69 @@ plot(model, which = 5)
 # Restore default plotting layout
 par(mfrow = c(1, 1))
 ```
+
+```{r selected-residual-plots, fig.width=12, fig.height=8, fig.align='center', fig.cap='Residuals by work hours, general health, stress level, sense of belonging, and total income.'}
+library(ggplot2)
+library(patchwork)
+
+# Create a dataset with model residuals
+residual_data <- model_data
+residual_data$Residuals <- residuals(model)
+
+# 1. Residuals vs Work Hours, by Gender
+p1 <- ggplot(residual_data,
+             aes(x = Work_hours, y = Residuals,
+                 color = Gender)) +
+  geom_jitter(alpha = 0.025, width = 0.25, height = 0) +
+  geom_smooth(method = "loess", se = FALSE, linewidth = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Work Hours",
+    x = "Weekly Work Hours",
+    y = "Residuals",
+    color = "Gender"
+  ) +
+  theme_minimal()
+
+# Function for categorical residual box plots
+make_boxplot <- function(variable, title) {
+  ggplot(residual_data,
+         aes(x = .data[[variable]], y = Residuals)) +
+    geom_boxplot(fill = "white", outlier.alpha = 0.15) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(
+      title = title,
+      x = "Category",
+      y = "Residuals"
+    ) +
+    theme_minimal()
+}
+
+# 2. Residuals vs General Health
+p2 <- make_boxplot(
+  "Gen_health_state",
+  "Residuals vs General Health"
+)
+
+# 3. Residuals vs Stress Level
+p3 <- make_boxplot(
+  "Stress_level",
+  "Residuals vs Stress Level"
+)
+
+# 4. Residuals vs Sense of Belonging
+p4 <- make_boxplot(
+  "Sense_belonging",
+  "Residuals vs Sense of Belonging"
+)
+
+# 5. Residuals vs Total Income
+p5 <- make_boxplot(
+  "Total_income",
+  "Residuals vs Total Income"
+)
+
+# Arrange plots in a 2 x 3 layout
+(p1 | p2 | p3) /
+(p4 | p5 | plot_spacer())
+```
