@@ -1,10 +1,16 @@
 ---
 title: "Life Satisfaction Analysis"
-author: "By: Charlotte Wong, "
+author: "By: Charlotte Wong, Ellie Huo, LangLang Lian"
 output: pdf_document
 geometry: margin=0.5in
 urlcolor: blue
 ---
+
+```{r}
+#import needed library
+library(ggplot2)
+library(patchwork)
+```
 
 # Data Import
 
@@ -138,7 +144,7 @@ removed_n <- original_n - remaining_n
 cat("Original observations:", original_n, "\n")
 cat("Remaining observations:", remaining_n, "\n")
 cat("Removed observations:", removed_n, "\n")
-cat("Number of predictors:", ncol(model_data) - 1, "\n")
+cat("Number of predictors:", ncol(complete_data) - 1, "\n")
 
 cat("Percentage of observations retained:",
     round(remaining_n / original_n * 100, 2), "%\n")
@@ -172,39 +178,34 @@ lapply(cleaned_data[categorical_vars], function(x) {
 })
 ```
 
-# Preliminary Results
-
 ```{r}
-# Regression model
-# Convert categorical predictors into factors
-model_data$Age <- factor(model_data$Age)
-model_data$Gen_health_state <- factor(model_data$Gen_health_state)
-model_data$High_BP <- factor(model_data$High_BP)
-model_data$Stress_level <- factor(model_data$Stress_level)
-model_data$Sense_belonging <- factor(model_data$Sense_belonging)
-model_data$Total_income <- factor(model_data$Total_income)
-model_data$Gender <- factor(model_data$Gender)
-model_data$Marital_status <- factor(model_data$Marital_status)
+#3. Check outlier of continuous variables using IQR
+model_data <- complete_data
+check_outliers <- function(x) {
+  Q1 <- quantile(x, 0.25, na.rm = TRUE)
+  Q3 <- quantile(x, 0.75, na.rm = TRUE)
+  IQR_value <- IQR(x, na.rm = TRUE)
 
-# Fit multiple linear regression with interaction
-model <- lm(
-  Life_satisfaction ~ Gender * Work_hours +
-    Age +
-    Gen_health_state +
-    High_BP +
-    Stress_level +
-    Sense_belonging +
-    Total_income +
-    Marital_status,
-  data = model_data
-)
+  lower <- Q1 - 1.5 * IQR_value
+  upper <- Q3 + 1.5 * IQR_value
 
-# Display regression results
-summary(model)
+  outliers <- x[x < lower | x > upper]
+
+  cat("Lower bound:", lower, "\n")
+  cat("Upper bound:", upper, "\n")
+  cat("Number of potential outliers:", length(outliers), "\n")
+}
+
+print("IQR summary for life_satisfaction:")
+check_outliers(model_data$Life_satisfaction)
+
+print("IQR summary for work_hours:")
+check_outliers(model_data$Work_hours)
 ```
 
 ```{r gender-workhours-plot, fig.width=8, fig.height=5, fig.align='center', fig.cap='Life satisfaction and weekly work hours by gender among complete-case respondents. Lines represent descriptive linear trends.'}
-library(ggplot2)
+
+#4. Evidence for interaction between Gender and Work_Hours by fitting regression line for each gender
 
 # Create a plotting dataset without modifying model_data
 plot_data <- data.frame(
@@ -243,7 +244,41 @@ geom_smooth(
   theme_minimal(base_size = 12)
 ```
 
+# Preliminary Results
+
+```{r}
+# 1. Regression model
+# Convert categorical predictors into factors
+model_data$Age <- factor(model_data$Age)
+model_data$Gen_health_state <- factor(model_data$Gen_health_state)
+model_data$High_BP <- factor(model_data$High_BP)
+model_data$Stress_level <- factor(model_data$Stress_level)
+model_data$Sense_belonging <- factor(model_data$Sense_belonging)
+model_data$Total_income <- factor(model_data$Total_income)
+model_data$Gender <- factor(model_data$Gender)
+model_data$Marital_status <- factor(model_data$Marital_status)
+
+# Fit multiple linear regression with interaction
+model <- lm(
+  Life_satisfaction ~ Gender * Work_hours +
+    Age +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+# Display regression results
+summary(model)
+```
+
+
 ```{r selected-coefficients, echo=FALSE, results='asis'}
+#2. Generate a summary table of selected OLS regression coefficients with estimates, standard errors, 95% confidence intervals, and p-values.
+
 # Select important coefficients
 selected_terms <- c(
   "Work_hours",
@@ -301,6 +336,7 @@ knitr::kable(
 ```
 
 ```{r}
+# 3. Preliminary multiple linear regression results for life satisfaction
 # Extract regression coefficient estimates
 coef_table <- as.data.frame(summary(model)$coefficients)
 
@@ -344,6 +380,8 @@ knitr::kable(
 ```
 
 ```{r final-diagnostic-figure, fig.width=10, fig.height=8, fig.align='center', fig.cap='Preliminary OLS diagnostics: residuals versus fitted values, normal Q-Q, scale-location, and residuals versus leverage.'}
+# 4. Preliminary OLS diagnostic plots
+
 # Arrange four diagnostic plots in a 2 x 2 layout
 par(mfrow = c(2, 2))
 
@@ -363,9 +401,10 @@ plot(model, which = 5)
 par(mfrow = c(1, 1))
 ```
 
+
 ```{r selected-residual-plots, fig.width=12, fig.height=8, fig.align='center', fig.cap='Residuals by work hours, general health, stress level, sense of belonging, and total income.'}
-library(ggplot2)
-library(patchwork)
+
+#5. Residual plots by selected predictors
 
 # Create a dataset with model residuals
 residual_data <- model_data
