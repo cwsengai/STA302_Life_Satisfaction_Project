@@ -71,7 +71,7 @@ cleaned_data$Life_satisfaction[
 # Age: Codes 1-5 are valid categories
 # No special missing codes specified in the provided codebook
 
-# General health: 6 = Don't know, 9 = Refusal
+# General health: 6, 7 = Don't know, 8, 9 = Refusal
 cleaned_data$Gen_health_state[
   cleaned_data$Gen_health_state %in% c(6, 7, 8, 9)
 ] <- NA
@@ -236,12 +236,6 @@ geom_smooth(
   se = TRUE,
   linewidth = 1.3
 ) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    se = TRUE,
-    linewidth = 1
-  ) +
   labs(
     title = "Work Hours and Life Satisfaction by Gender",
     x = "Weekly work hours",
