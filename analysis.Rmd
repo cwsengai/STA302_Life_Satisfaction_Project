@@ -133,6 +133,13 @@ missing_summary
 
 complete_data <- na.omit(cleaned_data)
 
+# exported the cleaned dataset
+write.csv(
+  complete_data,
+  "cleaned_health_dataset.csv",
+  row.names = FALSE
+)
+
 # Count observations before and after removing missing values
 
 original_n <- nrow(cleaned_data)
@@ -277,6 +284,7 @@ summary(model)
 
 
 ```{r selected-coefficients, echo=FALSE, results='asis'}
+# 2. Generate a summary table of selected OLS regression coefficients with estimates, standard errors, 95% confidence intervals, and p-values.
 # Selected coefficients
 selected_terms <- c(
   "Work_hours",
