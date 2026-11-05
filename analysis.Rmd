@@ -277,9 +277,7 @@ summary(model)
 
 
 ```{r selected-coefficients, echo=FALSE, results='asis'}
-#2. Generate a summary table of selected OLS regression coefficients with estimates, standard errors, 95% confidence intervals, and p-values.
-
-# Select important coefficients
+# Selected coefficients
 selected_terms <- c(
   "Work_hours",
   "Gender2:Work_hours",
@@ -289,7 +287,6 @@ selected_terms <- c(
   "Total_income5"
 )
 
-# Labels for the table
 predictor_labels <- c(
   "Work hours (male reference)",
   "Gender x Work hours (female vs male)",
@@ -299,12 +296,23 @@ predictor_labels <- c(
   "Highest vs lowest income"
 )
 
-# Extract coefficient estimates and confidence intervals
+# Extract coefficients and confidence intervals
 coef_info <- summary(model)$coefficients
 ci_info <- confint(model)
 
-stopifnot(all(selected_terms %in% rownames(coef_info)))
+# Check coefficient names
+missing_terms <- setdiff(selected_terms, rownames(coef_info))
 
+if (length(missing_terms) > 0) {
+  stop(
+    "These coefficients were not found in model: ",
+    paste(missing_terms, collapse = ", "),
+    "\nAvailable coefficients: ",
+    paste(rownames(coef_info), collapse = ", ")
+  )
+}
+
+# Build table
 selected_table <- data.frame(
   Predictor = predictor_labels,
   Estimate = sprintf("%.4f", coef_info[selected_terms, "Estimate"]),
@@ -322,10 +330,17 @@ selected_table <- data.frame(
   row.names = NULL
 )
 
+# Automatically match the output format
+output_format <- if (knitr::is_latex_output()) {
+  "latex"
+} else {
+  "pipe"
+}
+
 knitr::kable(
   selected_table,
-  format = "latex",
-  booktabs = TRUE,
+  format = output_format,
+  booktabs = (output_format == "latex"),
   escape = TRUE,
   col.names = c("Predictor", "Estimate", "SE", "95% CI", "p-value"),
   caption = paste0(
