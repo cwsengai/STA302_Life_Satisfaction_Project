@@ -575,21 +575,49 @@ cookcut <- 4 / (n - p)
 fitcut <- 2 * sqrt(p / n)
 betacut <- 2 / sqrt(n)
 
+# 8. Identify problematic observations
+
+n <- nobs(model)
+p <- length(coef(model))
+
+# Calculate diagnostic measures
+h_jj <- hatvalues(model)
+r_j <- rstudent(model)
+D_j <- cooks.distance(model)
+dffits_j <- dffits(model)
+dfbetas_j <- dfbetas(model)
+
+# Establish thresholds
+hcut <- 2 * p / n
+cookcut <- 4 / (n - p)
+fitcut <- 2 * sqrt(p / n)
+betacut <- 2 / sqrt(n)
+
 # Which observations are leverage points?
-which(h_jj > hcut)
+leverage_points <- which(h_jj > hcut)
+cat("Number of leverage points:", length(leverage_points), "\n")
+print(leverage_points)
 
 # Which observations are regression outliers?
-which(r_j > 4 | r_j < -4)
+outliers <- which(abs(r_j) > 4)
+cat("Number of regression outliers:", length(outliers), "\n")
+print(outliers)
 
 # Which observations are influential by Cook's distance?
-which(D_j > cookcut)
+cooks_points <- which(D_j > cookcut)
+cat("Number of influential observations (Cook's distance):",
+    length(cooks_points), "\n")
+print(cooks_points)
 
 # Which observations are influential by DFFITS?
-which(abs(dffits_j) > fitcut)
+dffits_points <- which(abs(dffits_j) > fitcut)
+cat("Number of influential observations (DFFITS):",
+    length(dffits_points), "\n")
+print(dffits_points)
 
 # Which observations are influential by DFBETAS?
 for (i in 1:ncol(dfbetas_j)) {
-  print(paste0("Beta ", i - 1))
+  cat("\nBeta", i - 1, "\n")
   print(which(abs(dfbetas_j[, i]) > betacut))
 }
 ```
@@ -598,7 +626,10 @@ for (i in 1:ncol(dfbetas_j)) {
 ```{r}
 # Combine flagged observations
 
+leverage_flag <- which(h_jj > hcut)
+
 all_flagged <- sort(unique(c(
+  leverage_flag,
   cooks_flag,
   dffits_flag,
   dfbetas_flag
@@ -607,18 +638,19 @@ all_flagged <- sort(unique(c(
 # Count diagnostic measures flagging each observation
 flag_summary <- data.frame(
   Observation = all_flagged,
+  Leverage = all_flagged %in% leverage_flag,
   Cooks_Distance = all_flagged %in% cooks_flag,
   DFFITS = all_flagged %in% dffits_flag,
   DFBETAS = all_flagged %in% dfbetas_flag
 )
 
 flag_summary$Number_of_Flags <- rowSums(
-  flag_summary[, 2:4]
+  flag_summary[, 2:5]
 )
 
 # Display observations flagged by at least three measures
 flag_summary[
-  flag_summary$Number_of_Flags >= 3,
+  flag_summary$Number_of_Flags >= 4,
 ]
 ```
 
