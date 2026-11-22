@@ -484,3 +484,278 @@ p5 <- make_boxplot(
 (p1 | p2 | p3) /
 (p4 | p5 | plot_spacer())
 ```
+
+```{r}
+# 6. Model fit: R-squared and adjusted R-squared
+
+model_summary <- summary(model)
+
+cat("R-squared:", model_summary$r.squared, "\n")
+cat("Adjusted R-squared:", model_summary$adj.r.squared, "\n")
+cat("Residual standard error:", model_summary$sigma, "\n")
+cat("Overall F-statistic:", model_summary$fstatistic[1], "\n")
+```
+
+```{r}
+# 7. Check multicollinearity using VIF
+
+vif_result <- car::vif(model)
+
+# Adjusted GVIF for models with categorical predictors
+
+if (is.matrix(vif_result)) {
+  vif_table <- data.frame(
+    Term = rownames(vif_result),
+    GVIF = vif_result[, "GVIF"],
+    Df = vif_result[, "Df"],
+    Adjusted_GVIF = vif_result[, "GVIF^(1/(2*Df))"]
+  )
+
+  print(vif_table)
+} else {
+  print(vif_result)
+}
+```
+
+```{r}
+# 8. Identify problematic observations
+
+n <- nobs(model)
+p <- length(coef(model))
+
+# Calculate diagnostic measures
+cooks_d <- cooks.distance(model)
+dffits_values <- dffits(model)
+dfbetas_values <- dfbetas(model)
+
+# Establish common diagnostic thresholds
+cooks_threshold <- 4 / (n - p)
+dffits_threshold <- 2 * sqrt(p / n)
+dfbetas_threshold <- 2 / sqrt(n)
+
+# Identify observations exceeding thresholds
+cooks_flag <- which(cooks_d > cooks_threshold)
+
+dffits_flag <- which(
+  abs(dffits_values) > dffits_threshold
+)
+
+dfbetas_flag <- which(
+  apply(abs(dfbetas_values) > dfbetas_threshold, 1, any)
+)
+
+# Summarize results
+cat("Cook's Distance threshold:", cooks_threshold, "\n")
+cat("Potentially influential observations:", length(cooks_flag), "\n\n")
+
+cat("DFFITS threshold:", dffits_threshold, "\n")
+cat("Potentially influential observations:", length(dffits_flag), "\n\n")
+
+cat("DFBETAS threshold:", dfbetas_threshold, "\n")
+cat("Potentially influential observations:", length(dfbetas_flag), "\n")
+```
+
+```{r}
+
+# 8. Identify problematic observations
+
+n <- nobs(model)
+p <- length(coef(model))
+
+# Calculate diagnostic measures
+h_jj <- hatvalues(model)
+r_j <- rstudent(model)
+D_j <- cooks.distance(model)
+dffits_j <- dffits(model)
+dfbetas_j <- dfbetas(model)
+
+# Establish thresholds
+hcut <- 2 * p / n
+cookcut <- 4 / (n - p)
+fitcut <- 2 * sqrt(p / n)
+betacut <- 2 / sqrt(n)
+
+# Which observations are leverage points?
+which(h_jj > hcut)
+
+# Which observations are regression outliers?
+which(r_j > 4 | r_j < -4)
+
+# Which observations are influential by Cook's distance?
+which(D_j > cookcut)
+
+# Which observations are influential by DFFITS?
+which(abs(dffits_j) > fitcut)
+
+# Which observations are influential by DFBETAS?
+for (i in 1:ncol(dfbetas_j)) {
+  print(paste0("Beta ", i - 1))
+  print(which(abs(dfbetas_j[, i]) > betacut))
+}
+```
+
+
+```{r}
+# Combine flagged observations
+
+all_flagged <- sort(unique(c(
+  cooks_flag,
+  dffits_flag,
+  dfbetas_flag
+)))
+
+# Count diagnostic measures flagging each observation
+flag_summary <- data.frame(
+  Observation = all_flagged,
+  Cooks_Distance = all_flagged %in% cooks_flag,
+  DFFITS = all_flagged %in% dffits_flag,
+  DFBETAS = all_flagged %in% dfbetas_flag
+)
+
+flag_summary$Number_of_Flags <- rowSums(
+  flag_summary[, 2:4]
+)
+
+# Display observations flagged by at least three measures
+flag_summary[
+  flag_summary$Number_of_Flags >= 3,
+]
+```
+
+```{r}
+# Examine observations flagged by at least two measures
+
+problematic_observations <- model_data[
+  flag_summary$Observation[
+    flag_summary$Number_of_Flags >= 2
+  ],
+]
+
+head(problematic_observations)
+```
+
+```{r}
+#9. t test and f test
+summary(model)
+
+```
+
+```{r}
+# Partial F-test for Gender x Work Hours interaction
+
+reduced_model <- lm(
+  Life_satisfaction ~ Gender + Work_hours +
+    Age +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+anova(reduced_model, model)
+```
+
+```{r}
+# Partial F-tests for individual model terms
+
+drop1(model, test = "F")
+```
+
+```{r}
+# Check the minimum and whether any zero or negative values exist
+min(model_data$Life_satisfaction, na.rm = TRUE)
+
+sum(model_data$Life_satisfaction <= 0, na.rm = TRUE)
+```
+
+```{r}
+# shift 1 as min is 0
+model_data$Life_satisfaction_positive <-
+  model_data$Life_satisfaction + 1 
+
+library(MASS)
+
+model_bc_base <- lm(
+  Life_satisfaction_positive ~ Gender * Work_hours +
+    Age +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+bc_result <- boxcox(
+  model_bc_base,
+  lambda = seq(-2, 2, by = 0.1)
+)
+
+best_lambda <- bc_result$x[which.max(bc_result$y)]
+
+best_lambda
+```
+
+```{r}
+if (abs(best_lambda) < 0.001) {
+  model_data$Life_satisfaction_BoxCox <-
+    log(model_data$Life_satisfaction_positive)
+} else {
+  model_data$Life_satisfaction_BoxCox <-
+    (model_data$Life_satisfaction_positive^best_lambda - 1) /
+    best_lambda
+}
+
+```
+
+```{r}
+model_boxcox <- lm(
+  Life_satisfaction_BoxCox ~ Gender * Work_hours +
+    Age +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+summary(model_boxcox)
+
+par(mfrow = c(2, 2))
+plot(model_boxcox)
+par(mfrow = c(1, 1))
+```
+
+```{r}
+# Extract fitted values and residuals
+residual_data <- data.frame(
+  Fitted = fitted(model_boxcox),
+  Residuals = residuals(model_boxcox)
+)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Randomly sample 5,000 observations
+residual_sample <- residual_data[
+  sample(nrow(residual_data), min(5000, nrow(residual_data))),
+]
+
+# Residuals vs Fitted plot
+ggplot(residual_sample, aes(x = Fitted, y = Residuals)) +
+  geom_point(alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  geom_smooth(method = "loess", se = FALSE, color = "blue") +
+  labs(
+    title = "Residuals vs Fitted Values (Box-Cox Transformation, λ = 2)",
+    x = "Fitted Values",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+```
