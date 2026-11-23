@@ -724,24 +724,16 @@ model_bc_base <- lm(
 
 bc_result <- boxcox(
   model_bc_base,
-  lambda = seq(-2, 2, by = 0.1)
+  lambda = seq(-3, 4, by = 0.025)
 )
 
-best_lambda <- bc_result$x[which.max(bc_result$y)]
-
+best_lambda <- 2.375
 best_lambda
 ```
 
 ```{r}
-if (abs(best_lambda) < 0.001) {
-  model_data$Life_satisfaction_BoxCox <-
-    log(model_data$Life_satisfaction_positive)
-} else {
-  model_data$Life_satisfaction_BoxCox <-
-    (model_data$Life_satisfaction_positive^best_lambda - 1) /
-    best_lambda
-}
-
+model_data$Life_satisfaction_BoxCox <-
+  model_data$Life_satisfaction_positive^best_lambda
 ```
 
 ```{r}
@@ -785,7 +777,10 @@ ggplot(residual_sample, aes(x = Fitted, y = Residuals)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
   labs(
-    title = "Residuals vs Fitted Values (Box-Cox Transformation, λ = 2)",
+    title = paste0(
+    "Residuals vs Fitted Values (Power Transformation, lambda = ",
+    best_lambda, ")"
+  ),
     x = "Fitted Values",
     y = "Residuals"
   ) +
