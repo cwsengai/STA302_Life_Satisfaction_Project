@@ -497,27 +497,6 @@ cat("Overall F-statistic:", model_summary$fstatistic[1], "\n")
 ```
 
 ```{r}
-# 7. Check multicollinearity using VIF
-
-vif_result <- car::vif(model)
-
-# Adjusted GVIF for models with categorical predictors
-
-if (is.matrix(vif_result)) {
-  vif_table <- data.frame(
-    Term = rownames(vif_result),
-    GVIF = vif_result[, "GVIF"],
-    Df = vif_result[, "Df"],
-    Adjusted_GVIF = vif_result[, "GVIF^(1/(2*Df))"]
-  )
-
-  print(vif_table)
-} else {
-  print(vif_result)
-}
-```
-
-```{r}
 # 8. Identify problematic observations
 
 n <- nobs(model)
@@ -667,36 +646,6 @@ head(problematic_observations)
 ```
 
 ```{r}
-#9. t test and f test
-summary(model)
-
-```
-
-```{r}
-# Partial F-test for Gender x Work Hours interaction
-
-reduced_model <- lm(
-  Life_satisfaction ~ Gender + Work_hours +
-    Age +
-    Gen_health_state +
-    High_BP +
-    Stress_level +
-    Sense_belonging +
-    Total_income +
-    Marital_status,
-  data = model_data
-)
-
-anova(reduced_model, model)
-```
-
-```{r}
-# Partial F-tests for individual model terms
-
-drop1(model, test = "F")
-```
-
-```{r}
 # Check the minimum and whether any zero or negative values exist
 min(model_data$Life_satisfaction, na.rm = TRUE)
 
@@ -785,4 +734,30 @@ ggplot(residual_sample, aes(x = Fitted, y = Residuals)) +
     y = "Residuals"
   ) +
   theme_minimal()
+
+# check pairwise plots for additional assumptions
+predictors = model_data[, c("Gender", "Work_hours", "Age", "Gen_health_state", "Stress_level", "Sense_belonging", "Total_income", "Marital_status")]
+
+pairs(predictors)
+```
+
+```{r}
+# t tests and partial F test
+
+# use summary output to check which predictors are significant
+
+reduced <- lm(
+  Life_satisfaction_BoxCox ~ Gender * Work_hours +
+    Gen_health_state +
+    High_BP +
+    Stress_level +
+    Sense_belonging +
+    Total_income +
+    Marital_status,
+  data = model_data
+)
+
+# conduct partial f test with full model and reduced model
+
+anova(reduced, model_boxcox)
 ```
